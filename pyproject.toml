@@ -20,6 +20,7 @@ keywords = ["feed", "reader", "tutorial"]
 dependencies = [
     "pandas>=2.0.0",
     "requests>=2.32.3",
+    "tqdm>=4.67.0",
     'tomli; python_version < "3.11"',
 ]
 

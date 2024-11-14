@@ -7,10 +7,14 @@ from zipfile import ZipFile
 from io import BytesIO
 import pandas as pd
 
-class Distemist(BenchmarkDataset):
+class DistemistLoader(BenchmarkDataset):
     URL = "https://zenodo.org/records/7614764/files/distemist_zenodo.zip?download=1"
+    NAME = "distemist_zenodo"
     DS_COLUMNS = config.DS_COLUMNS
     
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
+        super().__init__(lang, name, path, url, download_if_missing)
+
     def load_data(self):
         '''Load the data from the dataset
         Output: DataFrame with columns: filename, mark, label, off0, off1, span, code, semantic_rel, split, text
@@ -68,7 +72,6 @@ class Distemist(BenchmarkDataset):
         
         df_texts = pd.DataFrame(ls_texts, columns=["filename", "text"])
         df_texts["filename"] = df_texts["filename"].str.replace(extension, "") # remove the extension
-                
         return df_texts
     
     def preprocess_data(self):
@@ -93,6 +96,8 @@ class Distemist(BenchmarkDataset):
         cols = self.DS_COLUMNS + ["text", "split"]
         self.df = self.df[cols]
         
+        assert self.df.columns.intersection(self.DS_COLUMNS).shape[0] == len(self.DS_COLUMNS), "There are missing columns"
+        
     def _download_data(self, download_path):
         # Placeholder for the dataset download logic
         os.makedirs(download_path, exist_ok=True)
@@ -106,4 +111,45 @@ class Distemist(BenchmarkDataset):
         zip_file = ZipFile(BytesIO(response.content))
         zip_file.extractall(download_path)
         
+        return download_path
+    
+class DistemistGazetteer(BenchmarkDataset):
+    URL = "https://zenodo.org/records/6505583/files/dictionary_distemist.tsv?download=1"
+    NAME = "dictionary_distemist"
+    
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
+        super().__init__(lang, name, path, url, download_if_missing, load=False)
+
+        self.path = os.path.join(self.path, self.NAME + ".tsv")
+        
+        if not os.path.exists(self.path):
+            if download_if_missing:
+                print(f"Path '{self.path}' does not exist. Downloading dataset to '{self.path}'...")
+                self._download_data(self.path)
+            else:
+                raise FileNotFoundError(f"Path '{self.path}' does not exist, and download_if_missing is set to False.")
+        
+        self.load_data()
+        self.preprocess_data()
+
+    def load_data(self):
+        # Ensuring self.filename path consistency
+        # self.filename = os.path.join(self.path, self.NAME + ".tsv")
+        self.df = pd.read_csv(self.path, sep="\t", dtype=str)
+    
+    def preprocess_data(self):
+        pass
+        
+    def _download_data(self, download_path):
+        # Ensure the directory for download_path exists
+        print("Downloading dataset...")
+        response = get(self.URL)
+        
+        os.makedirs(os.path.dirname(download_path), exist_ok=True)          
+            
+        # Save the response content directly as a .tsv file
+        with open(download_path, "wb") as f:
+            f.write(response.content)
+        
+        print(f"Downloaded dataset saved to {download_path}")
         return download_path

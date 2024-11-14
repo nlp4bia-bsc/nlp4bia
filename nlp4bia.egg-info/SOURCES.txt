@@ -1,0 +1,13 @@
+LICENSE
+MANIFEST.in
+README.md
+pyproject.toml
+nlp4bia/__init__.py
+nlp4bia.egg-info/PKG-INFO
+nlp4bia.egg-info/SOURCES.txt
+nlp4bia.egg-info/dependency_links.txt
+nlp4bia.egg-info/requires.txt
+nlp4bia.egg-info/top_level.txt
+nlp4bia/datasets/Dataset.py
+nlp4bia/datasets/config.py
+nlp4bia/datasets/utils/versions.py

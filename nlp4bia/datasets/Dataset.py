@@ -60,7 +60,7 @@ class BenchmarkDataset(AbstractDataset):
     URL = None
     AVAIL_LANGS = ["en", "es", "fr", "de", "it", "nl", "pl", "pt", "ru", "tr"]
     
-    def __init__(self, lang, name, path=None, url=None, download_if_missing=True):
+    def __init__(self, lang, name, path=None, url=None, download_if_missing=True, load=True):
         self.path = path if path is not None else os.path.join(config.NLP4BIA_DATA_PATH, name)
         self.name = name
         self.lang = lang
@@ -72,16 +72,17 @@ class BenchmarkDataset(AbstractDataset):
         
         if self.lang not in self.AVAIL_LANGS:
             raise ValueError(f"Language '{self.lang}' is not supported for this dataset.")
-                 
-        if not os.path.exists(self.path):
-            if download_if_missing:
-                print(f"Path '{self.path}' does not exist. Downloading dataset to '{config.NLP4BIA_DATA_PATH}'...")
-                self.path = self._download_data(config.NLP4BIA_DATA_PATH)
-            else:
-                raise FileNotFoundError(f"Path '{self.path}' does not exist, and download_if_missing is set to False.")
         
-        self.load_data()
-        self.preprocess_data()
+        if load:
+            if not os.path.exists(self.path):
+                if download_if_missing:
+                    print(f"Path '{self.path}' does not exist. Downloading dataset to '{config.NLP4BIA_DATA_PATH}'...")
+                    self._download_data(config.NLP4BIA_DATA_PATH)
+                else:
+                    raise FileNotFoundError(f"Path '{self.path}' does not exist, and download_if_missing is set to False.")
+            
+            self.load_data()
+            self.preprocess_data()
         
         
     @abstractmethod

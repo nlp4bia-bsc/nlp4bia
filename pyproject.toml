@@ -1,0 +1,50 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlp4bia"
+version = "1.0.0"
+description = "Download NLP4BIA benchmarks and load datasets in their format"
+readme = "README.md"
+authors = [{ name = "Alberto Becerra", email = "alberto.becerra.tome@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["feed", "reader", "tutorial"]
+dependencies = [
+    "pandas>=2.0.0",
+    "requests>=2.32.3",
+    'tomli; python_version < "3.11"',
+]
+
+requires-python = ">=3.7"
+
+[project.optional-dependencies]
+dev = ["black", "bumpver", "isort", "pip-tools", "pytest"]
+
+# [project.urls]
+# Homepage = "https://github.com/realpython/reader"
+
+# [project.scripts]
+# realpython = "reader.__main__:main"
+[tool.bumpver]
+current_version = "1.0.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message  = "Bump version {old_version} -> {new_version}"
+commit          = true
+tag             = true
+push            = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
+"src/nlp4bia/__init__.py" = ["{version}"]
+
+[tool.setuptools.packages.find]
+include = ["nlp4bia"]
+exclude = ["nbs"]

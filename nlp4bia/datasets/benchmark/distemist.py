@@ -1,5 +1,6 @@
 from nlp4bia.datasets.Dataset import BenchmarkDataset
 from nlp4bia.datasets import config
+from nlp4bia.datasets.utils import handlers
 import os
         
 from requests import get
@@ -40,13 +41,11 @@ class DistemistLoader(BenchmarkDataset):
         
         df = pd.concat([df_train, df_test], ignore_index=True)
         
-        df_texts = self.get_texts(texts_train_path, texts_test_path)
+        df_texts = handlers.get_texts(texts_train_path, texts_test_path)
         df = df.merge(df_texts, on="filename", how="left")
         
         assert df.duplicated(subset=["filename", "mark"]).sum() == 0, "There are duplicated filename+marks"
         
-        # self.df_train = df[df["split"] == "train"]
-        # self.df_test = df[df["split"] == "test"]
         self.df = df
         
         return df
@@ -99,18 +98,22 @@ class DistemistLoader(BenchmarkDataset):
         assert self.df.columns.intersection(self.DS_COLUMNS).shape[0] == len(self.DS_COLUMNS), "There are missing columns"
         
     def _download_data(self, download_path):
-        # Placeholder for the dataset download logic
+        # Ensure download path exists
         os.makedirs(download_path, exist_ok=True)
-        # Implement actual download code here, such as downloading from a URL
-        print("Downloading dataset...")
-        # Example: download dataset to download_path and return the path
-        # CACHE_DIR = os.path.join(DATASET_PATH, "cache")
 
-        os.makedirs(download_path, exist_ok=True)
-        response = get(self.URL)
-        zip_file = ZipFile(BytesIO(response.content))
-        zip_file.extractall(download_path)
+        # Download dataset
+        print("Downloading dataset...")
+        temp_zip_path = os.path.join(download_path, "temp_dataset.zip")
+        handlers.progress_download(self.URL, temp_zip_path)
+
+        # Extract if zip file
+        with ZipFile(temp_zip_path, 'r') as zip_file:
+            zip_file.extractall(download_path)
         
+        # Clean up the temporary zip file
+        os.remove(temp_zip_path)
+        print("Dataset downloaded and extracted successfully.")
+
         return download_path
     
 class DistemistGazetteer(BenchmarkDataset):
@@ -138,7 +141,12 @@ class DistemistGazetteer(BenchmarkDataset):
         self.df = pd.read_csv(self.path, sep="\t", dtype=str)
     
     def preprocess_data(self):
-        pass
+        print("preprocessing data...")
+        # DS_COLUMNS =  ["filenameid", "mention_class", "span", "code", "sem_rel", "is_abbreviation", "is_composite", "needs_context", "extension_esp"]
+        self.df = self.df[config.GZ_COLUMNS]
+        
+        return self.df
+
         
     def _download_data(self, download_path):
         # Ensure the directory for download_path exists

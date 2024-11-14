@@ -60,12 +60,15 @@ class BenchmarkDataset(AbstractDataset):
     URL = None
     AVAIL_LANGS = ["en", "es", "fr", "de", "it", "nl", "pl", "pt", "ru", "tr"]
     
-    def __init__(self, path, lang, download_if_missing=False):
-        self.path = path
+    def __init__(self, lang, name, path=None, url=None, download_if_missing=True):
+        self.path = path if path is not None else os.path.join(config.NLP4BIA_DATA_PATH, name)
+        self.name = name
         self.lang = lang
-        self.df_train = None
-        self.df_val = None
-        self.df_test = None
+        self.df = None
+        # self.df_train = None
+        # self.df_val = None
+        # self.df_test = None
+        self.URL = url if url is not None else self.URL
         
         if self.lang not in self.AVAIL_LANGS:
             raise ValueError(f"Language '{self.lang}' is not supported for this dataset.")
@@ -76,6 +79,10 @@ class BenchmarkDataset(AbstractDataset):
                 self.path = self._download_data(config.NLP4BIA_DATA_PATH)
             else:
                 raise FileNotFoundError(f"Path '{self.path}' does not exist, and download_if_missing is set to False.")
+        
+        self.load_data()
+        self.preprocess_data()
+        
         
     @abstractmethod
     def _download_data(self, download_path):

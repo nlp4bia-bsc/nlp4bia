@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: nlp4bia
-Version: 1.0.0
+Version: 2.0.3
 Summary: Download NLP4BIA benchmarks and load datasets in their format
 Author-email: Alberto Becerra <alberto.becerra.tome@gmail.com>
 License: MIT License
@@ -33,6 +33,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: pandas>=2.0.0
 Requires-Dist: requests>=2.32.3
+Requires-Dist: tqdm>=4.67.0
 Requires-Dist: tomli; python_version < "3.11"
 Provides-Extra: dev
 Requires-Dist: black; extra == "dev"

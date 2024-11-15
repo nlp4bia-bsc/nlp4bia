@@ -9,5 +9,12 @@ nlp4bia.egg-info/dependency_links.txt
 nlp4bia.egg-info/requires.txt
 nlp4bia.egg-info/top_level.txt
 nlp4bia/datasets/Dataset.py
+nlp4bia/datasets/__init__.py
 nlp4bia/datasets/config.py
+nlp4bia/datasets/benchmark/__init__.py
+nlp4bia/datasets/benchmark/distemist.py
+nlp4bia/datasets/benchmark/medprocner.py
+nlp4bia/datasets/benchmark/symptemist.py
+nlp4bia/datasets/utils/__init__.py
+nlp4bia/datasets/utils/handlers.py
 nlp4bia/datasets/utils/versions.py

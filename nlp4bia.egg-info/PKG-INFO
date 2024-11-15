@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: nlp4bia
-Version: 2.0.3
+Version: 2.0.5
 Summary: Download NLP4BIA benchmarks and load datasets in their format
 Author-email: Alberto Becerra <alberto.becerra.tome@gmail.com>
 License: MIT License

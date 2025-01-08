@@ -1,2 +1,92 @@
-# nlp4bia
-Python library for NLP development in NLP4BIA group
+# NLP4BIA Library
+
+This repository provides a Python library for loading, processing, and utilizing biomedical datasets curated by the NLP4BIA research group at the Barcelona Supercomputing Center (BSC). The datasets are specifically designed for natural language processing (NLP) tasks in the biomedical domain.
+
+---
+
+## Available Dataset Loaders
+
+The library currently supports the following dataset loaders, which are part of public benchmarks:
+
+### 1. **Distemist**
+   - **Description**: A dataset for disease mentions recognition and normalization in Spanish medical texts.
+   - **Zenodo Repository**: [Distemist Zenodo](https://doi.org/10.5281/zenodo.7614764)
+
+### 2. **Meddoplace**
+   - **Description**: A dataset for place name recognition in Spanish medical texts.
+   - **Zenodo Repository**: [Meddoplace Zenodo](https://doi.org/10.5281/zenodo.8403498)
+
+### 3. **Medprocner**
+   - **Description**: A dataset for procedure name recognition in Spanish medical texts.
+   - **Zenodo Repository**: [Medprocner Zenodo](https://doi.org/10.5281/zenodo.7817667)
+
+### 4. **Symptemist**
+   - **Description**: A dataset for symptom mentions recognition in Spanish medical texts.
+   - **Zenodo Repository**: [Symptemist Zenodo](https://doi.org/10.5281/zenodo.10635215)
+---
+
+## Installation
+
+```bash
+pip install nlp4bia
+```
+
+---
+
+## Quick Start Guide
+
+### Example Usage
+
+Here's how to use one of the dataset loaders, such as `DistemistLoader`:
+
+```python
+from nlp4bia.datasets.benchmark.distemist import DistemistLoader
+
+# Initialize loader
+distemist_loader = DistemistLoader(lang="es", download_if_missing=True)
+
+# Load and preprocess data
+dis_df = distemist_loader.df
+print(dis_df.head())
+```
+
+Dataset folders are automatically downloaded and extracted to the `~/.nlp4bia` directory.
+
+### Column Descriptions
+
+#### Dataset Columns
+- **filenameid**: Unique identifier combining filename and offset information.
+- **mention_class**: The class of the mention (e.g., disease, symptom, etc.).
+- **span**: Text span corresponding to the mention.
+- **code**: The normalized code for the mention (usually to SNOMED CT).
+- **sem_rel**: Semantic relationships associated with the mention.
+- **is_abbreviation**: Indicates if the mention is an abbreviation.
+- **is_composite**: Indicates if the mention is a composite term.
+- **needs_context**: Indicates if the mention requires additional context.
+- **extension_esp**: Additional information specific to Spanish texts.
+
+#### Gazetteer Columns
+- **code**: Normalized code for the term.
+- **language**: Language of the term.
+- **term**: The term itself.
+- **semantic_tag**: Semantic tag associated with the term.
+- **mainterm**: Indicates if the term is a primary term.
+
+---
+
+## Contributing
+
+Contributions to expand the dataset loaders or improve existing functionality are welcome! Please open an issue or submit a pull request.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## References
+
+If you use this library or its datasets in your research, please cite the corresponding Zenodo repositories or related publications.
+

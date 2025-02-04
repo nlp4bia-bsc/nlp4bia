@@ -13,6 +13,7 @@ nlp4bia/datasets/__init__.py
 nlp4bia/datasets/config.py
 nlp4bia/datasets/benchmark/__init__.py
 nlp4bia/datasets/benchmark/distemist.py
+nlp4bia/datasets/benchmark/meddoplace.py
 nlp4bia/datasets/benchmark/medprocner.py
 nlp4bia/datasets/benchmark/symptemist.py
 nlp4bia/datasets/utils/__init__.py

@@ -81,7 +81,7 @@ class ParallelHashExtractor:
             file_chunks.append(all_files[start_idx:end_idx])
             start_idx = end_idx
             
-        print(file_chunks)
+        # print(file_chunks)
         # Define output CSVs for each process
         output_csvs = [os.path.join(self.hash_parts_output_dirs[i], f"hashes_part_{i}.csv") for i in range(self.num_processes)]
         

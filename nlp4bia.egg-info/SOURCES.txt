@@ -19,3 +19,9 @@ nlp4bia/datasets/benchmark/symptemist.py
 nlp4bia/datasets/utils/__init__.py
 nlp4bia/datasets/utils/handlers.py
 nlp4bia/datasets/utils/versions.py
+nlp4bia/linking/candidates.py
+nlp4bia/linking/linking_structures.py
+nlp4bia/preprocessor/CSVConcatenator.py
+nlp4bia/preprocessor/HashExtractor.py
+nlp4bia/preprocessor/__init__.py
+nlp4bia/preprocessor/deduplicator.py

@@ -17,7 +17,7 @@ def progress_download(url: str, fname: str, chunk_size=1024):
             size = file.write(data)
             bar.update(size)
             
-def get_texts(*paths, extension=".txt"):
+def get_texts(*paths, extension=".txt", encoding="utf-8"):
     '''Get texts from text_files
     Input: paths: sequence of paths to text_files
     Output: DataFrame with columns: filename, text
@@ -34,7 +34,7 @@ def get_texts(*paths, extension=".txt"):
         ls_texts_path.extend(ls_texts_path_i)
     
     # Retrieve the text from each file and create tuples with the filename and the content
-    ls_texts = [(filename, open(os.path.join(path, filename)).read()) for (path, filename) in ls_texts_path]
+    ls_texts = [(filename, open(os.path.join(path, filename), encoding=encoding).read()) for (path, filename) in ls_texts_path]
     
     df_texts = pd.DataFrame(ls_texts, columns=["filename", "text"])
     df_texts["filename"] = df_texts["filename"].str.replace(extension, "") # remove the extension

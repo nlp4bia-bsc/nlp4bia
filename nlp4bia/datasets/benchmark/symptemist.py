@@ -14,8 +14,8 @@ class SymptemistLoader(BenchmarkDataset):
     NAME = "symptemist-complete_240208"
     DS_COLUMNS = config.DS_COLUMNS
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, encoding=encoding)
 
     def load_data(self):
         '''Load the data from the dataset
@@ -27,8 +27,8 @@ class SymptemistLoader(BenchmarkDataset):
         test_path = os.path.join(self.path, "symptemist_test/subtask2-linking/symptemist_tsv_test_subtask2+COMPOSITE.tsv")
         texts_test_path = os.path.join(self.path, "symptemist_test/subtask1-ner/txt")
 
-        df_train = pd.read_csv(train_path, sep="\t", dtype=str)
-        df_test = pd.read_csv(test_path, sep="\t", dtype=str)
+        df_train = pd.read_csv(train_path, sep="\t", dtype=str, encoding=self.encoding)
+        df_test = pd.read_csv(test_path, sep="\t", dtype=str, encoding=self.encoding)
         
         df_train["split"] = "train"
         df_test["split"] = "test"
@@ -36,7 +36,7 @@ class SymptemistLoader(BenchmarkDataset):
         df = pd.concat([df_train, df_test])
         df.rename(columns={"text": "span"}, inplace=True)
         
-        df_texts = handlers.get_texts(texts_train_path, texts_test_path)
+        df_texts = handlers.get_texts(texts_train_path, texts_test_path, encoding=self.encoding)
         df = df.merge(df_texts, on="filename", how="left")
         
         self.df = df
@@ -89,15 +89,15 @@ class SymptemistGazetteer(BenchmarkDataset):
     NAME = "symptemist-complete_240208"
     DS_COLUMNS = config.DS_COLUMNS
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, encoding=encoding)
 
     def load_data(self):
         '''Load the data from the dataset
         Output: DataFrame with columns: filename, mark, label, off0, off1, span, code, semantic_rel, split, text
         '''
         gaz_path = os.path.join(self.path, "symptemist_gazetteer/symptemist_gazetter_snomed_ES_v2.tsv")
-        df = pd.read_csv(gaz_path, sep="\t", dtype=str)
+        df = pd.read_csv(gaz_path, sep="\t", dtype=str, encoding=self.encoding)
         
         self.df = df
         

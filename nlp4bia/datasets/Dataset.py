@@ -16,13 +16,14 @@ class Dataset(AbstractDataset):
     ORIG_VERSION = config.ORIG_VERSION
     AVAIL_LANGS = ["en", "es", "fr", "de", "it", "nl", "pl", "pt", "ru", "tr"]
     
-    def __init__(self, path, lang, version=None, download_if_missing=False):
+    def __init__(self, path, lang, version=None, download_if_missing=False, encoding="utf-8"):
         self.path = path
         self.d_versions = None
         self.lang = lang
         self.df_train = None
         self.df_val = None
         self.df_test = None
+        self.encoding = encoding
         
         if self.lang not in self.AVAIL_LANGS:
             raise ValueError(f"Language '{self.lang}' is not supported for this dataset.")
@@ -60,7 +61,7 @@ class BenchmarkDataset(AbstractDataset):
     URL = None
     AVAIL_LANGS = ["en", "es", "fr", "de", "it", "nl", "pl", "pt", "ru", "tr"]
     
-    def __init__(self, lang, name, path=None, url=None, download_if_missing=True, load=True):
+    def __init__(self, lang, name, path=None, url=None, download_if_missing=True, load=True, encoding="utf-8"):
         self.path = path if path is not None else os.path.join(config.NLP4BIA_DATA_PATH, name)
         self.name = name
         self.lang = lang
@@ -69,6 +70,7 @@ class BenchmarkDataset(AbstractDataset):
         # self.df_val = None
         # self.df_test = None
         self.URL = url if url is not None else self.URL
+        self.encoding = encoding
         
         if self.lang not in self.AVAIL_LANGS:
             raise ValueError(f"Language '{self.lang}' is not supported for this dataset.")

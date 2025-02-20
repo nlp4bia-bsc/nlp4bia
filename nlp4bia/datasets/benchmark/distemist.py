@@ -13,8 +13,8 @@ class DistemistLoader(BenchmarkDataset):
     NAME = "distemist_zenodo"
     DS_COLUMNS = config.DS_COLUMNS
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, encoding=encoding)
 
     def load_data(self):
         '''Load the data from the dataset
@@ -41,7 +41,7 @@ class DistemistLoader(BenchmarkDataset):
         
         df = pd.concat([df_train, df_test], ignore_index=True)
         
-        df_texts = handlers.get_texts(texts_train_path, texts_test_path)
+        df_texts = handlers.get_texts(texts_train_path, texts_test_path, encoding=self.encoding)
         df = df.merge(df_texts, on="filename", how="left")
         
         assert df.duplicated(subset=["filename", "mark"]).sum() == 0, "There are duplicated filename+marks"
@@ -50,28 +50,28 @@ class DistemistLoader(BenchmarkDataset):
         
         return df
     
-    @staticmethod
-    def get_texts(*paths, extension=".txt"):
-        '''Get texts from text_files
-        Input: paths: sequence of paths to text_files
-        Output: DataFrame with columns: filename, text
-        '''
-        ls_texts_path = []
-        for path in paths:
-            ls_texts_path_i = []
-            # For each main path, extract the filenames
-            for filename in os.listdir(path):
-                ls_texts_path_i.append((path, filename))
+    # @staticmethod
+    # def get_texts(*paths, extension=".txt", encoding="utf-8"):
+    #     '''Get texts from text_files
+    #     Input: paths: sequence of paths to text_files
+    #     Output: DataFrame with columns: filename, text
+    #     '''
+    #     ls_texts_path = []
+    #     for path in paths:
+    #         ls_texts_path_i = []
+    #         # For each main path, extract the filenames
+    #         for filename in os.listdir(path):
+    #             ls_texts_path_i.append((path, filename))
             
-            # Append the list of filenames to the main list
-            ls_texts_path.extend(ls_texts_path_i)
+    #         # Append the list of filenames to the main list
+    #         ls_texts_path.extend(ls_texts_path_i)
         
-        # Retrieve the text from each file and create tuples with the filename and the content
-        ls_texts = [(filename, open(os.path.join(path, filename)).read()) for (path, filename) in ls_texts_path]
+    #     # Retrieve the text from each file and create tuples with the filename and the content
+    #     ls_texts = [(filename, open(os.path.join(path, filename), encoding=encoding).read()) for (path, filename) in ls_texts_path]
         
-        df_texts = pd.DataFrame(ls_texts, columns=["filename", "text"])
-        df_texts["filename"] = df_texts["filename"].str.replace(extension, "") # remove the extension
-        return df_texts
+    #     df_texts = pd.DataFrame(ls_texts, columns=["filename", "text"])
+    #     df_texts["filename"] = df_texts["filename"].str.replace(extension, "") # remove the extension
+    #     return df_texts
     
     def preprocess_data(self):
         print("preprocessing data...")
@@ -120,8 +120,8 @@ class DistemistGazetteer(BenchmarkDataset):
     URL = "https://zenodo.org/records/6505583/files/dictionary_distemist.tsv?download=1"
     NAME = "dictionary_distemist"
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing, load=False)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, load=False, encoding=encoding)
 
         self.path = os.path.join(self.path, self.NAME + ".tsv")
         
@@ -138,7 +138,7 @@ class DistemistGazetteer(BenchmarkDataset):
     def load_data(self):
         # Ensuring self.filename path consistency
         # self.filename = os.path.join(self.path, self.NAME + ".tsv")
-        self.df = pd.read_csv(self.path, sep="\t", dtype=str)
+        self.df = pd.read_csv(self.path, sep="\t", dtype=str, encoding=self.encoding)
     
     def preprocess_data(self):
         print("preprocessing data...")

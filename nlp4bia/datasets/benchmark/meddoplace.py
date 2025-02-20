@@ -14,8 +14,8 @@ class MeddoplaceLoader(BenchmarkDataset):
     NAME = "meddoplace_train+test+gazz+crossmap+multilingual"
     DS_COLUMNS = config.DS_COLUMNS
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, encoding=encoding)
 
     def load_data(self):
         '''Load the data from the dataset
@@ -36,7 +36,7 @@ class MeddoplaceLoader(BenchmarkDataset):
         df = pd.concat([df_train, df_test])
         df.rename(columns={"text": "span"}, inplace=True)
         
-        df_texts = handlers.get_texts(texts_train_path, texts_test_path)
+        df_texts = handlers.get_texts(texts_train_path, texts_test_path, encoding=self.encoding)
         df = df.merge(df_texts, on="filename", how="left")
         
         self.df = df
@@ -90,15 +90,15 @@ class MeddoplaceGazetteer(BenchmarkDataset):
     NAME = "meddoplace_train+test+gazz+crossmap+multilingual"
     DS_COLUMNS = config.DS_COLUMNS
     
-    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True):
-        super().__init__(lang, name, path, url, download_if_missing)
+    def __init__(self, lang="es", path=None, name=NAME, url=URL, download_if_missing=True, encoding="utf-8"):
+        super().__init__(lang, name, path, url, download_if_missing, encoding=encoding)
 
     def load_data(self):
         '''Load the data from the dataset
         Output: DataFrame with columns: filename, mark, label, off0, off1, span, code, semantic_rel, split, text
         '''
         gaz_path = os.path.join(self.path, "meddoplace_gazetteer/gazetteer_snomed_meddoplace.tsv")
-        df = pd.read_csv(gaz_path, sep="\t", dtype=str)
+        df = pd.read_csv(gaz_path, sep="\t", dtype=str, encoding=self.encoding)
         
         self.df = df
         

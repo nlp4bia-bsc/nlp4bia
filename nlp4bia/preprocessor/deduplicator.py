@@ -62,7 +62,7 @@ class HashDeduplicator:
         
         pcsv = ParallelCSVConcatenator(self.output_dir, num_processes=self.num_processes)
         ls_files = self.deduplicate_files(self.files_or_pattern)
-        return pcsv.get_batch_content(ls_files, output_csv=output_csv, progress_bar=True)
+        return pcsv.get_batch_content(ls_files, output_csv=output_csv, progress_bar=self.progress_bar)
     
     
 # hd = HashDeduplicator("nbs/preprocessor/test_data/test*/**/*.txt", "nbs/preprocessor/", num_processes=2)

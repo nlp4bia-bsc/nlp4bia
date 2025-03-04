@@ -1,6 +1,8 @@
 pandas>=2.0.0
 requests>=2.32.3
 tqdm>=4.67.0
+pymupdf4llm>=0.0.17
+markdown>=3.3.4
 
 [:python_version < "3.11"]
 tomli

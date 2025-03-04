@@ -37,6 +37,7 @@ pip install nlp4bia
 
 ### Example Usage
 
+#### Dataset Loaders
 Here's how to use one of the dataset loaders, such as `DistemistLoader`:
 
 ```python
@@ -52,7 +53,39 @@ print(dis_df.head())
 
 Dataset folders are automatically downloaded and extracted to the `~/.nlp4bia` directory.
 
-### Column Descriptions
+#### Preprocessor
+
+##### Deduplication
+
+```python
+from nlp4bia.preprocessor.deduplicator import HashDeduplicator
+
+# Define the list of files to deduplicate
+ls_files = ["path/to/file1.txt", "path/to/file2.txt"]
+
+# Instantiate the deduplicator. It deduplicates the files using 8 cores.
+hd = HashDeduplicator(ls_files, num_processes=8)
+
+# Deduplicate the files and save the results to a CSV file
+hd.get_deduplicated_files("path/tp/deduplicated_contents.csv")
+```
+
+##### Document Parser
+
+**PDFS**
+
+```python
+from nlp4bia.preprocessor.pdfparser import PDFParserMuPDF
+
+# Define the path to the PDF file
+pdf_path = "path/to/file.pdf"
+
+# Instantiate the PDF parser
+pdf_parser = PDFParserMuPDF(pdf_path)
+
+# Extract the text from the PDF file
+pdf_text = pdf_parser.extract_text()
+```
 
 #### Dataset Columns
 - **filenameid**: Unique identifier combining filename and offset information.

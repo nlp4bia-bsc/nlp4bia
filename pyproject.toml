@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlp4bia"
-version = "2.1.9"
+version = "2.2.0"
 description = "Download NLP4BIA benchmarks and load datasets in their format"
 readme = "README.md"
 authors = [{ name = "Alberto Becerra", email = "alberto.becerra.tome@gmail.com" }]
@@ -22,6 +22,11 @@ dependencies = [
     "requests>=2.32.3",
     "tqdm>=4.67.0",
     'tomli; python_version < "3.11"',
+    'pymupdf4llm>=0.0.17',
+    'markdown>=3.3.4',
+    
+
+
 ]
 
 requires-python = ">=3.7"
@@ -35,7 +40,7 @@ dev = ["black", "bumpver", "isort", "pip-tools", "pytest"]
 # [project.scripts]
 # realpython = "reader.__main__:main"
 [tool.bumpver]
-current_version = "2.1.9"
+current_version = "2.2.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message  = "Bump version {old_version} -> {new_version}"
 commit          = true

@@ -23,6 +23,26 @@ The library currently supports the following dataset loaders, which are part of 
 ### 4. **Symptemist**
    - **Description**: A dataset for symptom mentions recognition in Spanish medical texts.
    - **Zenodo Repository**: [Symptemist Zenodo](https://doi.org/10.5281/zenodo.10635215)
+
+
+#### Dataset Columns
+- **filenameid**: Unique identifier combining filename and offset information.
+- **mention_class**: The class of the mention (e.g., disease, symptom, etc.).
+- **span**: Text span corresponding to the mention.
+- **code**: The normalized code for the mention (usually to SNOMED CT).
+- **sem_rel**: Semantic relationships associated with the mention.
+- **is_abbreviation**: Indicates if the mention is an abbreviation.
+- **is_composite**: Indicates if the mention is a composite term.
+- **needs_context**: Indicates if the mention requires additional context.
+- **extension_esp**: Additional information specific to Spanish texts.
+
+#### Gazetteer Columns
+- **code**: Normalized code for the term.
+- **language**: Language of the term.
+- **term**: The term itself.
+- **semantic_tag**: Semantic tag associated with the term.
+- **mainterm**: Indicates if the term is a primary term.
+
 ---
 
 ## Installation
@@ -50,6 +70,7 @@ distemist_loader = DistemistLoader(lang="es", download_if_missing=True)
 dis_df = distemist_loader.df
 print(dis_df.head())
 ```
+
 
 Dataset folders are automatically downloaded and extracted to the `~/.nlp4bia` directory.
 
@@ -87,24 +108,32 @@ pdf_parser = PDFParserMuPDF(pdf_path)
 pdf_text = pdf_parser.extract_text()
 ```
 
-#### Dataset Columns
-- **filenameid**: Unique identifier combining filename and offset information.
-- **mention_class**: The class of the mention (e.g., disease, symptom, etc.).
-- **span**: Text span corresponding to the mention.
-- **code**: The normalized code for the mention (usually to SNOMED CT).
-- **sem_rel**: Semantic relationships associated with the mention.
-- **is_abbreviation**: Indicates if the mention is an abbreviation.
-- **is_composite**: Indicates if the mention is a composite term.
-- **needs_context**: Indicates if the mention requires additional context.
-- **extension_esp**: Additional information specific to Spanish texts.
+#### Linking
 
-#### Gazetteer Columns
-- **code**: Normalized code for the term.
-- **language**: Language of the term.
-- **term**: The term itself.
-- **semantic_tag**: Semantic tag associated with the term.
-- **mainterm**: Indicates if the term is a primary term.
+Perform dense retrieval using the `DenseRetriever` class:
 
+```python
+from sentence_transformers import SentenceTransformer
+from nlp4bia.datasets.benchmark.medprocner import MedprocnerLoader, MedprocnerGazetteer
+from nlp4bia.linking.retrievers import DenseRetriever
+
+# Load the dataset and gazetteer
+df_proc = MedprocnerLoader().df
+gaz_proc = MedprocnerGazetteer().df
+gaz_proc = gaz_proc.sort_values(by=["code", "mainterm"], 
+                                ascending=[True, False]) # Make sure mainterms are first
+
+# Load the model
+model_name = "path/to/model"
+st_model = SentenceTransformer(model_name)
+
+# Create the vector database
+vector_db = st_model.encode(gaz_proc["term"].tolist()[:100], show_progress_bar=True, convert_to_tensor=True, normalize_embeddings=True)
+
+# Initialize the retriever
+biencoder = DenseRetriever(vector_db=vector_db, model=st_model)
+biencoder.retrieve_top_k(["reparación de un desprendimiento de la retina"], gaz_proc.iloc[:100], k=10, input_format="text")
+```
 ---
 
 ## Contributing
@@ -132,3 +161,8 @@ If you use this library or its datasets in your research, please cite the corres
 4. Check the package (`twine check dist/*`).
 5. Upload the package (`twine upload dist/*`).
 6. Install the package (`pip install nlp4bia`).
+
+Note: to build you have to install `build` and `twine` packages:
+```bash
+pip install build twine
+```

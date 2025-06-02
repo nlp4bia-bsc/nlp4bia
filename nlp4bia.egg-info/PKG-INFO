@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nlp4bia
-Version: 2.3.1
+Version: 2.3.2
 Summary: Download NLP4BIA benchmarks and load datasets in their format
 Author-email: Alberto Becerra <alberto.becerra.tome@gmail.com>
 License: MIT License
@@ -49,9 +49,50 @@ Dynamic: license-file
 
 # NLP4BIA Library
 
+[![PyPI version](https://img.shields.io/pypi/v/nlp4bia.svg)](https://pypi.org/project/nlp4bia)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  
+
 This repository provides a Python library for loading, processing, and utilizing biomedical datasets curated by the NLP4BIA research group at the Barcelona Supercomputing Center (BSC). The datasets are specifically designed for natural language processing (NLP) tasks in the biomedical domain.
 
+
+- [NLP4BIA Library](#nlp4bia-library)
+  - [Installation](#installation)
+  - [Introduction](#introduction)
+  - [Available Dataset Loaders](#available-dataset-loaders)
+    - [1. **Distemist**](#1-distemist)
+    - [2. **Meddoplace**](#2-meddoplace)
+    - [3. **Medprocner**](#3-medprocner)
+    - [4. **Symptemist**](#4-symptemist)
+      - [Dataset Columns](#dataset-columns)
+      - [Gazetteer Columns](#gazetteer-columns)
+  - [Quick Start Guide](#quick-start-guide)
+    - [Example Usage](#example-usage)
+      - [Dataset Loaders](#dataset-loaders)
+      - [Preprocessor](#preprocessor)
+        - [Deduplication](#deduplication)
+        - [Document Parser](#document-parser)
+      - [Linking](#linking)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [References](#references)
+
 ---
+
+## Installation
+
+```bash
+pip install nlp4bia
+```
+
+## Introduction
+
+**NLP4BIA** is a Python package for working with curated biomedical NLP datasets in Spanish. Developed by the NLP4BIA research group at the Barcelona Supercomputing Center (BSC), it provides:
+
+- **Dataset Loaders** for public benchmarks like Distemist, Meddoplace, Medprocner, Symptemist.  
+- **Preprocessing Utilities** such as deduplication, PDF parsing, and more.  
+- **Linking Tools** to perform dense retrieval against medical gazetteers (e.g., SNOMED CT) using SentenceTransformers.  
+
+Whether you’re training new NLP models on Spanish clinical text, sanitizing raw medical documents, or performing terminology linking, NLP4BIA aims to streamline your workflow.
 
 ## Available Dataset Loaders
 
@@ -75,30 +116,28 @@ The library currently supports the following dataset loaders, which are part of 
 
 
 #### Dataset Columns
-- **filenameid**: Unique identifier combining filename and offset information.
-- **mention_class**: The class of the mention (e.g., disease, symptom, etc.).
-- **span**: Text span corresponding to the mention.
-- **code**: The normalized code for the mention (usually to SNOMED CT).
-- **sem_rel**: Semantic relationships associated with the mention.
-- **is_abbreviation**: Indicates if the mention is an abbreviation.
-- **is_composite**: Indicates if the mention is a composite term.
-- **needs_context**: Indicates if the mention requires additional context.
-- **extension_esp**: Additional information specific to Spanish texts.
+| Column Name       | Type/Example                     | Description                                             |
+|-------------------|----------------------------------|---------------------------------------------------------|
+| `filenameid`      | `"12345_678"`             | Unique ID combining filename and character offsets.     |
+| `mention_class`   | `"ENFERMEDAD"`                      | Class of the mention (disease, symptom, procedure, etc.). |
+| `span`            | `"diabetes tipo 2"`             | Text span corresponding to the mention.                 |
+| `code`            | `"44054006"`                     | Normalized SNOMED CT code for the mention.              |
+| `sem_rel`         | `"EXACT"`/`"NARROW"`/`"COMPOSITE"`                       | EXACT: The mention matches perfectly with the associated term; NARROW: it is not exactly the same but a term parent not in the ontology; COMPOSITE: needs more than one code to be defined (e.g. 1243535+13452543) |
+| `is_abbreviation` | `True` / `False`                 | Whether the mention is an abbreviation.                 |
+| `is_composite`    | `True` / `False`                 | Whether the mention is a composite term.                |
+| `needs_context`   | `True` / `False`                 | Whether extra context is required to interpret the span. |
+| `extension_esp`   | `"info adicional"`               | Extra fields specific to Spanish texts.                 |
 
 #### Gazetteer Columns
-- **code**: Normalized code for the term.
-- **language**: Language of the term.
-- **term**: The term itself.
-- **semantic_tag**: Semantic tag associated with the term.
-- **mainterm**: Indicates if the term is a primary term.
 
----
+| Column Name   | Type/Example      | Description                                    |
+|---------------|-------------------|------------------------------------------------|
+| `code`        | `"44054006"`      | SNOMED CT code for the term.                   |
+| `language`    | `"es"`            | Language of the term (e.g., "es", "en").       |
+| `term`        | `"diabetes"`      | The term itself (string).                      |
+| `semantic_tag`| `"disorder"`      | Semantic tag associated with the term.         |
+| `mainterm`    | `True` / `False`  | Whether this is a primary (“preferred”) term or a synonym.  |
 
-## Installation
-
-```bash
-pip install nlp4bia
-```
 
 ---
 
@@ -177,11 +216,17 @@ model_name = "path/to/model"
 st_model = SentenceTransformer(model_name)
 
 # Create the vector database
-vector_db = st_model.encode(gaz_proc["term"].tolist()[:100], show_progress_bar=True, convert_to_tensor=True, normalize_embeddings=True)
+vector_db = st_model.encode(gaz_proc["term"].tolist()[:100], 
+                            show_progress_bar=True, 
+                            convert_to_tensor=True, 
+                            normalize_embeddings=True)
 
 # Initialize the retriever
 biencoder = DenseRetriever(vector_db=vector_db, model=st_model)
-biencoder.retrieve_top_k(["reparación de un desprendimiento de la retina"], gaz_proc.iloc[:100], k=10, input_format="text")
+biencoder.retrieve_top_k(["reparación de un desprendimiento de la retina"], 
+                          gaz_proc.iloc[:100], 
+                          k=10, 
+                          input_format="text")
 ```
 ---
 
@@ -200,18 +245,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## References
 
 If you use this library or its datasets in your research, please cite the corresponding Zenodo repositories or related publications.
-
----
-# Instructions for Maintainers
-
-1. Update the version in `nlp4bia/__init__.py` and in `pyproject.toml`.
-2. Remove the `dist` folder (`rm -rf dist`).
-3. Build the package (`python -m build`).
-4. Check the package (`twine check dist/*`).
-5. Upload the package (`twine upload dist/*`).
-6. Install the package (`pip install nlp4bia`).
-
-Note: to build you have to install `build` and `twine` packages:
-```bash
-pip install build twine
-```

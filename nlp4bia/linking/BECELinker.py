@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Union, Optional, Tuple
@@ -28,9 +29,10 @@ class BECELinker:
         normalize_embeddings: bool = True,
         biencoder_batch_size: int = 32,
         reranker_batch_size: int = 32,
-        reranker_device: str = "cuda",
-        biencoder_device: str = "cuda",
-        show_progress_bar: bool = True
+        reranker_device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        biencoder_device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        show_progress_bar: bool = True,
+        vector_db: Optional[np.ndarray] = None
     ) -> None:
         """
         Initialize BECELinker with both bi-encoder and cross-encoder components.
@@ -58,6 +60,9 @@ class BECELinker:
                 Device to load the cross-encoder on. Defaults to "cuda".
             show_progress_bar (bool, optional):
                 If True, show tqdm progress bars during encoding and scoring. Defaults to True.
+            vector_db (Optional[np.ndarray], optional):
+                Precomputed vector database for the gazetteer terms.
+                If None, will compute on-the-fly. Defaults to None.
 
         Raises:
             AssertionError: If `df_gazetteer` lacks the required columns "term" or "code".
@@ -67,15 +72,23 @@ class BECELinker:
         self.df_gazetteer = df_gazetteer.reset_index(drop=True).copy()
 
         # Initialize DenseRetriever (bi-encoder)
+        print("Initializing DenseRetriever...")
+        print(f"Using bi-encoder model: {biencoder_model_or_path}")
+        print("Note: Vector DB will be computed on the fly. Increase `biencoder_batch_size` to accelerate this.")
+        print("In case of MemoryError, try reducing `biencoder_batch_size` or using a smaller model.")
         self.retriever = DenseRetriever(
             df_candidates=self.df_gazetteer,
             model_or_path=biencoder_model_or_path,
             normalize=normalize_embeddings,
-            vector_db=None,  # will be computed inside DenseRetriever __init__
+            # vector_db=None,  # will be computed inside DenseRetriever __init__
             vector_db_batch_size=biencoder_batch_size,
-            device=biencoder_device
+            device=biencoder_device,
+            vector_db=vector_db
         )
 
+        print("DenseRetriever initialized successfully.")
+        print("Initializing CrossEncoder Reranker...")
+        print(f"Using CrossEncoder model: {crossencoder_model_or_path}")
         # Initialize CrossEncoderReranker
         term2code_mapping = self.df_gazetteer.set_index("term")["code"].to_dict()
         self.reranker = CrossEncoderReranker(

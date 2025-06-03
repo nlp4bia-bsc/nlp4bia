@@ -7,36 +7,90 @@ from sentence_transformers import SentenceTransformer
 
 class DenseRetriever:
     """
-    Performs dense retrieval of query embeddings against a precomputed vector database (gazetteer).
+    Performs dense retrieval of query embeddings against a precomputed vector database
+    of candidate terms (the gazetteer). 
+
+    The gazetteer is stored as a DataFrame (`df_candidates`) containing at least two columns:
+      - "term": the string form of each candidate
+      - "code": a unique identifier (or code) corresponding to each term
+
+    This class can either accept a precomputed embedding matrix (`vector_db`) for the gazetteer,
+    or compute it on-the-fly by encoding the "term" column with a provided SentenceTransformer model.
 
     Attributes:
-        vector_db (torch.Tensor): Normalized or raw embeddings of gazetteer terms.
-        model (SentenceTransformer): SentenceTransformer model used to encode query texts.
-        normalize (bool): Whether to normalize input vectors before retrieval.
+        df_candidates (pd.DataFrame): Copy of the input DataFrame with columns "term" and "code".
+        vector_db (torch.Tensor): Tensor of shape (num_terms, embedding_dim) containing
+                                  (optionally normalized) gazetteer embeddings.
+        model (SentenceTransformer): Model used to encode queries (if input_format="text").
+        normalize (bool): Whether to L2-normalize incoming query vectors (or provided `vector_db`).
     """
 
     def __init__(
         self,
-        vector_db: torch.Tensor,
-        model: SentenceTransformer,
-        normalize: bool = True
+        df_candidates: pd.DataFrame,
+        model_or_path: Union[str, SentenceTransformer],
+        normalize: bool = True,
+        vector_db: Optional[torch.Tensor] = None,
+        vector_db_batch_size: int = 256
     ) -> None:
         """
-        Initialize the DenseRetriever.
+        Initialize a DenseRetriever over a candidate-term DataFrame.
 
         Args:
-            vector_db (torch.Tensor):
-                Precomputed embeddings for gazetteer terms. Shape: (num_terms, embedding_dim).
-            model (SentenceTransformer):
-                SentenceTransformer instance used to encode query texts.
+            df_candidates (pd.DataFrame):
+                DataFrame containing the gazetteer. Must contain columns:
+                  - "term": the textual form of each candidate
+                  - "code": a unique identifier or code for each candidate
+            model_or_path (str or SentenceTransformer):
+                Either a string path/identifier for a pretrained SentenceTransformer
+                or an already-loaded SentenceTransformer instance. If a path is given,
+                the model will be loaded from that path.
             normalize (bool, optional):
-                If True, the provided `vector_db` will be L2-normalized along dim=1. Default is True.
+                If True:
+                  - L2-normalize the rows of `vector_db` (if provided).
+                  - When encoding queries (input_format="text"), automatically
+                    normalize the query embeddings to unit length.
+                Defaults to True.
+            vector_db (torch.Tensor, optional):
+                If provided, a tensor of shape (num_terms, embedding_dim) containing
+                precomputed embeddings for all rows in `df_candidates["term"]`. If None,
+                this constructor will encode `df_candidates["term"]` via `model.encode(...)`.
+                If this tensor is supplied and `normalize=True`, it will be L2-normalized
+                across dim=1. Defaults to None.
+            vector_db_batch_size (int, optional):
+                Batch size to use when encoding the gazetteer terms (only when
+                `vector_db` is None). Defaults to 256.
+
+        Raises:
+            AssertionError:
+                If `df_candidates` does not contain the required columns "term" and "code".
         """
         self.normalize = normalize
-        self.vector_db: torch.Tensor = (
-            self.normalize_vector(vector_db) if normalize else vector_db
-        )
-        self.model: SentenceTransformer = model
+        self.df_candidates = df_candidates.copy()
+        assert "term" in self.df_candidates.columns, "`df_candidates` must contain a 'term' column"
+        assert "code" in self.df_candidates.columns, "`df_candidates` must contain a 'code' column"
+
+        # Load or assign the SentenceTransformer model
+        if isinstance(model_or_path, SentenceTransformer):
+            self.model = model_or_path
+        else:
+            self.model = SentenceTransformer(model_or_path)
+
+        if vector_db is None:
+            # Compute gazetteer embeddings by encoding each term string
+            # The result is a tensor of shape (num_terms, embedding_dim).
+            self.vector_db: torch.Tensor = self.model.encode(
+                self.df_candidates["term"].tolist(),
+                show_progress_bar=True,
+                convert_to_tensor=True,
+                normalize_embeddings=self.normalize,
+                batch_size=vector_db_batch_size
+            )
+        else:
+            # Use the supplied embedding matrix; optionally normalize each row
+            self.vector_db = (
+                self.normalize_vector(vector_db) if self.normalize else vector_db
+            )
 
     def get_distances(
         self,
@@ -44,40 +98,49 @@ class DenseRetriever:
         input_format: str = "text"
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Compute cosine similarity scores between query embeddings and the vector database.
+        Compute cosine-similarity scores between each query and all gazetteer embeddings.
 
-        If `input_format="text"`, the `data` argument should be a list of raw query strings,
-        which will be encoded via `self.model.encode(...)`. If `input_format="vector"`, then
-        `data` is assumed to be a tensor of precomputed query embeddings.
+        This method returns two arrays:
+          1. `distances`: a NumPy array of shape (num_queries, num_terms) containing
+             cosine-similarity scores between each query and each gazetteer entry.
+          2. `indices`: a NumPy array of shape (num_queries, num_terms) containing,
+             for each query-row, the gazetteer indices sorted in descending order of similarity.
 
         Args:
             data (List[str] or torch.Tensor):
-                - If input_format == "text": list of raw query strings.
-                - If input_format == "vector": tensor of shape (num_queries, embedding_dim).
+                - If `input_format="text"`: a list of raw query strings. Each string
+                  will be encoded by `self.model.encode(...)`, resulting in a tensor of
+                  shape (num_queries, embedding_dim).
+                - If `input_format="vector"`: a torch.Tensor of shape
+                  (num_queries, embedding_dim) containing precomputed query embeddings.
             input_format (str, optional):
-                - "text": encode `data` as raw strings using `self.model`.
-                - "vector": use `data` directly as embeddings (will normalize if `self.normalize=True`).
+                Specifies how to interpret `data`:
+                  - "text": treat `data` as List[str] and encode with `self.model`.
+                            The encoded queries are L2-normalized if `self.normalize=True`.
+                  - "vector": treat `data` as a precomputed embedding tensor. If
+                              `self.normalize=True`, these query embeddings are L2-normalized.
                 Default is "text".
 
         Returns:
             distances (np.ndarray):
-                Cosine-similarity scores between each query and all gazetteer embeddings.
-                Shape: (num_queries, num_terms).
+                Cosine-similarity scores with shape (num_queries, num_terms).
+                Higher values indicate greater similarity.
             indices (np.ndarray):
-                Indices of gazetteer entries sorted by descending similarity for each query.
-                Shape: (num_queries, num_terms).
+                For each query (row), an array of length num_terms giving the
+                gazetteer-entry indices sorted by descending similarity.
+
+        Raises:
+            ValueError:
+                If `input_format` is not one of {"text", "vector"}.
         """
-        # Encode or normalize query embeddings
         if input_format == "text":
-            # Returns tensor of shape (num_queries, embedding_dim)
             query_matrix: torch.Tensor = self.model.encode(
                 data,
                 show_progress_bar=True,
                 convert_to_tensor=True,
-                normalize_embeddings=True
+                normalize_embeddings=self.normalize
             )
         elif input_format == "vector":
-            # If provided as vectors, optionally normalize
             raw_queries: torch.Tensor = data  # type: ignore
             query_matrix = (
                 self.normalize_vector(raw_queries) if self.normalize else raw_queries
@@ -85,82 +148,60 @@ class DenseRetriever:
         else:
             raise ValueError(f"input_format must be 'text' or 'vector', got '{input_format}'")
 
-        # Compute cosine similarity via matrix multiplication
-        # self.vector_db is shape (num_terms, embedding_dim)
-        # query_matrix shape: (num_queries, embedding_dim)
-        # Hence, torch.mm(query_matrix, self.vector_db.T) -> (num_queries, num_terms)
         similarity_tensor: torch.Tensor = torch.mm(query_matrix, self.vector_db.T)
-
-        # Move to CPU numpy arrays
         distances: np.ndarray = similarity_tensor.cpu().numpy()
-
-        # Sort indices in descending order of similarity
-        # argsort returns ascending, so we reverse with [ :, ::-1 ]
         indices: np.ndarray = distances.argsort(axis=1)[:, ::-1]
-
         return distances, indices
 
     def get_top_k_gazetteer(
         self,
-        df_gaz: pd.DataFrame,
         distances: np.ndarray,
         indices: np.ndarray,
-        k: Optional[int] = 10,
-        code_col: str = "code",
-        term_col: str = "term"
+        k: Optional[int] = 10
     ) -> List[Dict[str, List[Union[str, float]]]]:
         """
-        Retrieve the top-k closest gazetteer entries (codes and terms) for each query.
+        Retrieve the top-k nearest neighbors from the gazetteer for each query.
+
+        Given `distances` and `indices` (as returned by `get_distances`), this method
+        builds, for each query, a dictionary containing:
+          - "codes": the gazetteer codes of the top-k entries
+          - "terms": the gazetteer term strings of the top-k entries
+          - "similarity": the cosine-similarity scores of those top-k entries
 
         Args:
-            df_gaz (pd.DataFrame):
-                DataFrame containing the gazetteer, with at least columns `code_col` and `term_col`.
             distances (np.ndarray):
                 Cosine-similarity scores array of shape (num_queries, num_terms).
             indices (np.ndarray):
-                Sorted gazetteer indices by descending similarity, shape (num_queries, num_terms).
+                Sorted gazetteer indices by descending similarity (shape (num_queries, num_terms)).
             k (int or None, optional):
-                Number of top nearest neighbors to retrieve. If None, returns all. Default is 10.
-            code_col (str, optional):
-                Column name in `df_gaz` for the gazetteer code. Default is "code".
-            term_col (str, optional):
-                Column name in `df_gaz` for the gazetteer term. Default is "term".
+                Number of nearest neighbors to retrieve for each query.
+                If k is None or exceeds `num_terms`, returns all `num_terms`.
+                Default is 10.
 
         Returns:
-            top_k_list (List[Dict[str, List[Union[str, float]]]]):
-                A list (one per query) of dictionaries with keys:
-                  - "codes": List[str] of length k
-                  - "terms": List[str] of length k
-                  - "similarity": List[float] of corresponding cosine scores
+            List[Dict[str, List[Union[str, float]]]]:
+                A list of length num_queries, where each element is a dict with keys:
+                  - "codes": List[str] of length k (gazetteer codes)
+                  - "terms": List[str] of length k (gazetteer term strings)
+                  - "similarity": List[float] of length k (cosine-similarity scores)
         """
         num_queries, num_terms = distances.shape
-
-        # If k is None or larger than available terms, use all terms
         if k is None or k > num_terms:
             k = num_terms
 
-        # For each query, take the first k indices by highest similarity
         topk_indices: np.ndarray = indices[:, :k]
-
-        # Gather distances of the top-k entries for each query
-        # distances[np.arange(num_queries)[:, None], topk_indices] -> shape (num_queries, k)
-        topk_distances: np.ndarray = distances[np.arange(num_queries)[:, None], topk_indices]
+        topk_similarities: np.ndarray = distances[np.arange(num_queries)[:, None], topk_indices]
 
         top_k_list: List[Dict[str, List[Union[str, float]]]] = []
+        codes_list = self.df_candidates["code"].tolist()
+        terms_list = self.df_candidates["term"].tolist()
 
-        for query_idx in range(num_queries):
-            # Prepare containers for codes, terms, and similarity scores
+        for qi in range(num_queries):
             entry = {"codes": [], "terms": [], "similarity": []}
-
-            for rank_idx, gaz_idx in enumerate(topk_indices[query_idx]):
-                code_value: str = str(df_gaz.iloc[gaz_idx][code_col])
-                term_value: str = str(df_gaz.iloc[gaz_idx][term_col])
-                sim_score: float = float(topk_distances[query_idx, rank_idx])
-
-                entry["codes"].append(code_value)
-                entry["terms"].append(term_value)
-                entry["similarity"].append(sim_score)
-
+            for rank_idx, gaz_idx in enumerate(topk_indices[qi]):
+                entry["codes"].append(str(codes_list[gaz_idx]))
+                entry["terms"].append(str(terms_list[gaz_idx]))
+                entry["similarity"].append(float(topk_similarities[qi, rank_idx]))
             top_k_list.append(entry)
 
         return top_k_list
@@ -168,47 +209,51 @@ class DenseRetriever:
     def retrieve_top_k(
         self,
         data: Union[List[str], torch.Tensor],
-        df_gaz: pd.DataFrame,
         k: int = 10,
         input_format: str = "text",
-        return_documents: str = True
+        return_documents: bool = True
     ) -> List[Dict[str, List[Union[str, float]]]]:
         """
-        Perform full retrieval: encode queries, compute similarity to the gazetteer, and return top-k.
+        End-to-end retrieval: encode queries (if needed), compute similarity against
+        all gazetteer entries, and return the top-k neighbors (with codes, terms, similarity).
+        Optionally attaches the original query string under the key "mention".
 
         Args:
             data (List[str] or torch.Tensor):
-                If `input_format=="text"`, a list of raw query strings.
-                If `input_format=="vector"`, a tensor of shape (num_queries, embedding_dim).
-            df_gaz (pd.DataFrame):
-                DataFrame containing the gazetteer entries. Must have `code` and `term` columns,
-                or specified via `code_col`/`term_col` arguments in get_top_k_gazetteer.
+                - If `input_format="text"`: a list of raw query strings to encode.
+                - If `input_format="vector"`: a torch.Tensor of shape (num_queries, embedding_dim)
+                  of precomputed query embeddings.
             k (int, optional):
-                Number of nearest neighbors to return. Default is 10.
+                Number of nearest neighbors to return per query. Default is 10.
             input_format (str, optional):
-                Format of `data`. "text" for raw strings, "vector" for precomputed embeddings.
+                One of {"text", "vector"}:
+                  - "text": treat `data` as List[str], encode with `self.model.encode(...)`.
+                  - "vector": treat `data` as a tensor of query embeddings.
                 Default is "text".
             return_documents (bool, optional):
-                A new entry called "mention" is added to the final dictionary with the query mention
+                If True and `input_format=="text"`, each returned dict will include
+                a key `"mention"` set to the original query string. If False, omit it.
+                Defaults to True.
 
         Returns:
             List[Dict[str, List[Union[str, float]]]]:
-                A list (length = num_queries) of dicts, each containing:
-                  - "mention" : str (opcional)
-                  - "codes": List[str]
-                  - "terms": List[str]
-                  - "similarity": List[float]
-        """
-        # Step 1: compute distances and sorted indices
-        distances, indices = self.get_distances(data, input_format=input_format)
+                A list of length num_queries. Each element is a dictionary with keys:
+                  - "codes": List[str] of length k
+                  - "terms": List[str] of length k
+                  - "similarity": List[float] of length k
+                  - (optional) "mention": str (only if return_documents=True and input_format="text")
 
-        # Step 2: extract top-k gazetteer entries
-        top_k_results = self.get_top_k_gazetteer(df_gaz, distances, indices, k)
-        
-        if input_format=="text" and return_documents:
-            for i in range(len(data)):
-                top_k_results[i]["mention"] = data[i]
-            
+        Raises:
+            ValueError:
+                If `input_format` is not "text" or "vector".
+        """
+        distances, indices = self.get_distances(data, input_format=input_format)
+        top_k_results = self.get_top_k_gazetteer(distances, indices, k)
+
+        if input_format == "text" and return_documents:
+            for i, query_str in enumerate(data):
+                top_k_results[i]["mention"] = query_str
+
         return top_k_results
 
     @staticmethod
@@ -217,25 +262,26 @@ class DenseRetriever:
         p: Union[int, float] = 2
     ) -> torch.Tensor:
         """
-        Normalize each row of the input tensor to unit length using the L-p norm.
+        L2-normalize (or L-p normalize) each row of the input tensor.
 
         Args:
             vector (torch.Tensor):
-                Input tensor of shape (N, D), where N = number of vectors, D = embedding dimension.
+                Input tensor of shape (N, D), where N = number of vectors (rows),
+                D = embedding dimension (columns).
             p (int or float, optional):
-                The norm degree (1 for L1, 2 for L2, np.inf for max-norm). Default is 2.
+                The norm degree:
+                  - p=1: L1 norm
+                  - p=2: L2 norm (default)
+                  - p=np.inf: max-norm
+                Default is 2 (L2 norm).
 
         Returns:
             torch.Tensor:
-                Normalized tensor of shape (N, D). If any row has zero norm, it remains unchanged.
+                Tensor of shape (N, D) where each row has been divided by its L-p norm.
+                If any row has zero norm, that row remains unchanged (division by 1).
         """
-        # Compute the norm along dimension 1 (each row), keepdims for broadcasting
-        norm = torch.norm(vector, p=p, dim=1, keepdim=True)  # shape: (N, 1)
-
-        # Avoid division by zero: if a row's norm is zero, keep the original row
-        zero_rows = (norm == 0).squeeze(1)  # shape: (N,)
+        norm = torch.norm(vector, p=p, dim=1, keepdim=True)
+        zero_rows = (norm == 0).squeeze(1)
         if zero_rows.any():
-            # For zero-norm rows, set norm to 1 before division to leave them unchanged
             norm[zero_rows, :] = 1.0
-
         return vector / norm

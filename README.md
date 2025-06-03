@@ -180,7 +180,7 @@ biencoder.retrieve_top_k(["reparación de un desprendimiento de la retina"],
                           input_format="text")
 ```
 
-Perform full Bien/Cross-Encoder linking using the `BECELinker` class: (documentation available in `[nlp4bia/docs/BECELinker.md](nlp4bia/docs/BECELinker.md)`)
+Perform full Bien/Cross-Encoder linking using the `BECELinker` class: (documentation available in [nlp4bia/docs/BECELinker.md](nlp4bia/docs/BECELinker.md))
 
 ```python
 import pandas as pd

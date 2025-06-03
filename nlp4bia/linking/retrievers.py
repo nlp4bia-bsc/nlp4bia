@@ -170,7 +170,8 @@ class DenseRetriever:
         data: Union[List[str], torch.Tensor],
         df_gaz: pd.DataFrame,
         k: int = 10,
-        input_format: str = "text"
+        input_format: str = "text",
+        return_documents: str = True
     ) -> List[Dict[str, List[Union[str, float]]]]:
         """
         Perform full retrieval: encode queries, compute similarity to the gazetteer, and return top-k.
@@ -187,10 +188,13 @@ class DenseRetriever:
             input_format (str, optional):
                 Format of `data`. "text" for raw strings, "vector" for precomputed embeddings.
                 Default is "text".
+            return_documents (bool, optional):
+                A new entry called "mention" is added to the final dictionary with the query mention
 
         Returns:
             List[Dict[str, List[Union[str, float]]]]:
                 A list (length = num_queries) of dicts, each containing:
+                  - "mention" : str (opcional)
                   - "codes": List[str]
                   - "terms": List[str]
                   - "similarity": List[float]
@@ -200,7 +204,11 @@ class DenseRetriever:
 
         # Step 2: extract top-k gazetteer entries
         top_k_results = self.get_top_k_gazetteer(df_gaz, distances, indices, k)
-
+        
+        if input_format=="text" and return_documents:
+            for i in range(len(data)):
+                top_k_results[i]["mention"] = data[i]
+            
         return top_k_results
 
     @staticmethod

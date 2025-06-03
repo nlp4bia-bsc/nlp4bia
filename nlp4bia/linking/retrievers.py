@@ -31,7 +31,8 @@ class DenseRetriever:
         model_or_path: Union[str, SentenceTransformer],
         normalize: bool = True,
         vector_db: Optional[torch.Tensor] = None,
-        vector_db_batch_size: int = 256
+        vector_db_batch_size: int = 256,
+        device: Union[str, torch.device] = "cuda" if torch.cuda.is_available() else "cpu"
     ) -> None:
         """
         Initialize a DenseRetriever over a candidate-term DataFrame.
@@ -60,6 +61,9 @@ class DenseRetriever:
             vector_db_batch_size (int, optional):
                 Batch size to use when encoding the gazetteer terms (only when
                 `vector_db` is None). Defaults to 256.
+            device (str or torch.device, optional):
+                The device to use for computations. Can be "cpu" or "cuda".
+                Defaults to "cuda" if available, otherwise "cpu".
 
         Raises:
             AssertionError:
@@ -69,12 +73,13 @@ class DenseRetriever:
         self.df_candidates = df_candidates.copy()
         assert "term" in self.df_candidates.columns, "`df_candidates` must contain a 'term' column"
         assert "code" in self.df_candidates.columns, "`df_candidates` must contain a 'code' column"
-
+        self.device = device
+        
         # Load or assign the SentenceTransformer model
         if isinstance(model_or_path, SentenceTransformer):
             self.model = model_or_path
         else:
-            self.model = SentenceTransformer(model_or_path)
+            self.model = SentenceTransformer(model_or_path, device=device)
 
         if vector_db is None:
             # Compute gazetteer embeddings by encoding each term string
@@ -84,7 +89,8 @@ class DenseRetriever:
                 show_progress_bar=True,
                 convert_to_tensor=True,
                 normalize_embeddings=self.normalize,
-                batch_size=vector_db_batch_size
+                batch_size=vector_db_batch_size,
+                device=self.device
             )
         else:
             # Use the supplied embedding matrix; optionally normalize each row
@@ -138,7 +144,8 @@ class DenseRetriever:
                 data,
                 show_progress_bar=True,
                 convert_to_tensor=True,
-                normalize_embeddings=self.normalize
+                normalize_embeddings=self.normalize,
+                device=self.device
             )
         elif input_format == "vector":
             raw_queries: torch.Tensor = data  # type: ignore

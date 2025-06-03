@@ -188,14 +188,14 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from nlp4bia.linking.BECELinker import BECELinker
 
 # 1) Load your gazetteer as a DataFrame with "term" and "code" columns:
-gaz_proc = pd.read_csv("medproc_gazetteer.csv")  # must have columns ["term","code"]
+# gaz_proc = pd.read_csv("medproc_gazetteer.csv")  # must have columns ["term","code"]
 
 # You can also use one of the preprocessed gazetteers from nlp4bia:
-# from nlp4bia.datasets.benchmark.medprocner import MedprocnerLoader, MedprocnerGazetteer
-# gaz_proc = MedprocnerLoader().df
+from nlp4bia.datasets.benchmark.medprocner import MedprocnerLoader, MedprocnerGazetteer
+gaz_proc = MedprocnerGazetteer().df
 
 # 2) Prepare or load your bi-encoder & cross-encoder:
-biencoder_path = "/path/to/bi_encoder_checkpoint"  # or a preloaded SentenceTransformer object
+biencoder_path = "/path/to/bi_encoder_checkpoint"  # or a preloaded SentenceTransformer object (e.g. ICB-UMA/ClinLinker-KB-GP)
 crossencoder_path = "/path/to/cross_encoder_checkpoint"  # or a preloaded CrossEncoder object
 
 # 3) Instantiate BECELinker:
@@ -203,17 +203,21 @@ linker = BECELinker(
     df_gazetteer=gaz_proc,
     biencoder_model_or_path=biencoder_path,           # can be a model instance or a path string
     crossencoder_model_or_path=crossencoder_path,     # can be a model instance or path string
-    n_candidates=50,                     # how many candidates to keep after bi-encoder retrieval
-    top_k=100,                           # how many to retrieve before reranking
     normalize_embeddings=True,
     show_progress_bar=True
 )
 
 # 4) Prepare a list of mention strings you want to link:
-mentions = ["aspirin", "heart attack", "pulmonary embolism"]
+mentions = ["exploración neurológica", "incisión cutánea", "vacuna"]
 
-# 5) Link them:
-results = linker.link(mentions, top_k=100, return_documents=True)
+# 5) Link a list of mentions
+ls_mentions = df_proc["span"].tolist()[:10]
+results = linker.link(
+    mentions=ls_mentions,
+    n_candidates=200,
+    top_k=5,
+    return_documents=True
+)
 
 # 6) Inspect results for "aspirin":
 res0 = results[0]

@@ -179,6 +179,49 @@ biencoder.retrieve_top_k(["reparación de un desprendimiento de la retina"],
                           k=10, 
                           input_format="text")
 ```
+
+Perform full Bien/Cross-Encoder linking using the `BECELinker` class: (documentation available in `[nlp4bia/docs/BECELinker.md](nlp4bia/docs/BECELinker.md)`)
+
+```python
+import pandas as pd
+from sentence_transformers import SentenceTransformer, CrossEncoder
+from nlp4bia.linking.BECELinker import BECELinker
+
+# 1) Load your gazetteer as a DataFrame with "term" and "code" columns:
+gaz_proc = pd.read_csv("medproc_gazetteer.csv")  # must have columns ["term","code"]
+
+# You can also use one of the preprocessed gazetteers from nlp4bia:
+# from nlp4bia.datasets.benchmark.medprocner import MedprocnerLoader, MedprocnerGazetteer
+# gaz_proc = MedprocnerLoader().df
+
+# 2) Prepare or load your bi-encoder & cross-encoder:
+biencoder_path = "/path/to/bi_encoder_checkpoint"  # or a preloaded SentenceTransformer object
+crossencoder_path = "/path/to/cross_encoder_checkpoint"  # or a preloaded CrossEncoder object
+
+# 3) Instantiate BECELinker:
+linker = BECELinker(
+    df_gazetteer=gaz_proc,
+    biencoder_model_or_path=biencoder_path,           # can be a model instance or a path string
+    crossencoder_model_or_path=crossencoder_path,     # can be a model instance or path string
+    n_candidates=50,                     # how many candidates to keep after bi-encoder retrieval
+    top_k=100,                           # how many to retrieve before reranking
+    normalize_embeddings=True,
+    show_progress_bar=True
+)
+
+# 4) Prepare a list of mention strings you want to link:
+mentions = ["aspirin", "heart attack", "pulmonary embolism"]
+
+# 5) Link them:
+results = linker.link(mentions, top_k=100, return_documents=True)
+
+# 6) Inspect results for "aspirin":
+res0 = results[0]
+print("Mention:", res0["mention"])
+for rank, (term, code, score) in enumerate(zip(res0["terms"], res0["codes"], res0["similarity"]), start=1):
+    print(f" {rank:02d}. {term} (ID: {code}) → score: {score:.4f}")
+```
+
 ---
 
 ## Contributing

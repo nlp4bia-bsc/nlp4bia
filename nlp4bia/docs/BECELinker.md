@@ -83,6 +83,10 @@ from nlp4bia.linking.BECELinker import BECELinker
 # 1) Load your gazetteer as a DataFrame with "term" and "code" columns:
 gaz_proc = pd.read_csv("medproc_gazetteer.csv")  # must have columns ["term","code"]
 
+# You can also use one of the preprocessed gazetteers from nlp4bia:
+# from nlp4bia.datasets.benchmark.medprocner import MedprocnerLoader, MedprocnerGazetteer
+# gaz_proc = MedprocnerLoader().df
+
 # 2) Prepare or load your bi-encoder & cross-encoder:
 biencoder_path = "/path/to/bi_encoder_checkpoint"  # or a preloaded SentenceTransformer object
 crossencoder_path = "/path/to/cross_encoder_checkpoint"  # or a preloaded CrossEncoder object
